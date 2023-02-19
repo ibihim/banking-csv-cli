@@ -9,31 +9,53 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Transaction struct {
-	Account           string
-	BookingDate       string
-	ValutaDate        string
-	BookingText       string
-	Purpose           string
-	CreditorID        string
-	MandateRef        string
-	CustomerRef       string
-	CollectorRef      string
-	OrigAmount        float64
-	ChargebackFee     float64
-	Beneficiary       string
-	AccountNumber     string
-	BIC               string
-	Amount            float64
-	Currency          string
+	// Account is the account number of the account under view.
+	Account string
+	// BookingDate is the date of the transaction being triggered.
+	BookingDate string
+	// ValutaDate is the date of the transaction being completed.
+	ValutaDate string
+	// BookingText is a text that tries to set a type for the transaction.
+	BookingText string
+	// Purpose is a text that describes the purpose of the transaction.
+	Purpose string
+	// CreditorID is the creditor identifier of the creditor.
+	CreditorID string
+	// MandateRef is the id that identifies the mandate that allows the creditor to collect the amount.
+	MandateRef string
+	// CustomerRef ???
+	CustomerRef string
+	// CollectorRef is some id that seems to be specific to the creditor.
+	CollectorRef string
+	// OrigAmount ???
+	OrigAmount float64
+	// ChargebackFee is the fee charged by the bank for a chargeback.
+	ChargebackFee float64
+	// Beneficiary is the name of the creditor.
+	Beneficiary string
+	// AccountNumber is the IBAN of the beneficiary.
+	AccountNumber string
+	// BIC is the Bank Identifier Code of the beneficiary.
+	BIC string
+	// Amount is the amount of the transaction.
+	Amount float64
+	// Currency is the currency of the transaction.
+	Currency string
+	// AdditionalDetails describes the current state of the transaction.
 	AdditionalDetails string
 }
 
-type Summary struct {
-	Beneficiary string
-	TotalAmount float64
+type Model struct {
+	Groups map[string]float64
+
+	table table.Model
 }
 
 func main() {
@@ -53,11 +75,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Group the transactions by beneficiary
-	summaries := GroupTransactions(transactions)
+	// Group the transactions by beneficiary and visualize them using Bubble Tea
+	groups := GroupTransactions(transactions)
 
-	// Visualize the summaries
-	VisualizeTransactions(summaries)
+	// Create the table Model
+	tableModel := mapGroupsToModel(groups)
+
+	if _, err := tea.NewProgram(tableModel).Run(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func parseCommandLine() string {
@@ -147,40 +173,95 @@ func ParseTransactions(reader io.Reader) ([]Transaction, error) {
 	return transactions, nil
 }
 
-// GroupTransactions groups a slice of Transaction objects by beneficiary and calculates the total amount for each beneficiary
-func GroupTransactions(transactions []Transaction) []Summary {
-	// Group the transactions by beneficiary
-	summaries := make(map[string]Summary)
-	for _, transaction := range transactions {
-		summary, ok := summaries[transaction.Beneficiary]
-		if !ok {
-			summary = Summary{Beneficiary: transaction.Beneficiary}
-		}
-		summary.TotalAmount += transaction.Amount
-		summaries[transaction.Beneficiary] = summary
-	}
-
-	// Convert the map to a slice
-	var result []Summary
-	for _, summary := range summaries {
-		result = append(result, summary)
-	}
-
-	return result
-}
-
-// VisualizeTransactions prints a list of Summary objects to the console in a tabular format
-func VisualizeTransactions(summaries []Summary) {
-	// Print the summaries
-	fmt.Printf("%-50s %-10s\n", "Beneficiary", "Total Amount")
-	for _, summary := range summaries {
-		fmt.Printf("%-50s %-10.2f\n", summary.Beneficiary, summary.TotalAmount)
-	}
-}
-
 func parseFloat(s string) (float64, error) {
 	if s == "" {
 		return 0, nil
 	}
 	return strconv.ParseFloat(strings.ReplaceAll(s, ",", "."), 64)
+}
+
+// GroupTransactions groups a slice of Transaction objects by beneficiary and calculates the total amount for each beneficiary
+func GroupTransactions(transactions []Transaction) map[string]float64 {
+	groups := make(map[string]float64)
+	for _, t := range transactions {
+		if t.Amount < 0 {
+			groups[t.Beneficiary] -= t.Amount
+		} else {
+			groups[t.Beneficiary] += t.Amount
+		}
+	}
+	return groups
+}
+
+func mapGroupsToModel(groups map[string]float64) Model {
+	columns := []table.Column{
+		{
+			Title: "Beneficiary",
+			Width: 50,
+		},
+		{
+			Title: "Amount",
+			Width: 10,
+		},
+	}
+
+	rows := []table.Row{}
+	for beneficiary, amount := range groups {
+		rows = append(rows, table.Row{beneficiary, fmt.Sprintf("%.2f", amount)})
+	}
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(7),
+		table.WithStyles(s),
+	)
+
+	return Model{Groups: groups, table: t}
+}
+
+func (m Model) Init() tea.Cmd { return nil }
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc":
+			if m.table.Focused() {
+				m.table.Blur()
+			} else {
+				m.table.Focus()
+			}
+		case "q", "ctrl+c":
+			return m, tea.Quit
+		case "enter":
+			return m, tea.Batch(
+				tea.Printf("Let's go to %s!", m.table.SelectedRow()[1]),
+			)
+		}
+	}
+
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
+}
+
+var baseStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.NormalBorder()).
+	BorderForeground(lipgloss.Color("240"))
+
+func (m Model) View() string {
+	return baseStyle.Render(m.table.View()) + "\n"
 }
