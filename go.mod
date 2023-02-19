@@ -1,4 +1,4 @@
-module github.com/ibihim/csv-plays
+module github.com/ibihim/banking-csv-cli
 
 go 1.19
 
