@@ -1,14 +1,16 @@
 package transactions
 
+import "time"
+
 type Transaction struct {
 	// ID is the id of the transaction.
 	ID int64
 	// Account is the account number of the account under view.
 	Account string
 	// BookingDate is the date of the transaction being triggered.
-	BookingDate string
+	BookingDate time.Time
 	// ValutaDate is the date of the transaction being completed.
-	ValutaDate string
+	ValutaDate time.Time
 	// BookingText is a text that tries to set a type for the transaction.
 	BookingText string
 	// Purpose is a text that describes the purpose of the transaction.

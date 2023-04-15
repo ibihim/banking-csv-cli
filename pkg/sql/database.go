@@ -108,10 +108,12 @@ func (d *Database) AddTransaction(t *transactions.Transaction) (int64, error) {
 			beneficiary, account_number, bic, amount, currency, additional_details
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
+
 	result, err := d.db.Exec(query,
-		t.Account, t.BookingDate, t.ValutaDate, t.BookingText, t.Purpose, t.CreditorID,
-		t.MandateRef, t.CustomerRef, t.CollectorRef, t.OrigAmount, t.ChargebackFee,
-		t.Beneficiary, t.AccountNumber, t.BIC, t.Amount, t.Currency, t.AdditionalDetails,
+		t.Account, t.BookingDate.Format("02.01.06"), t.ValutaDate.Format("02.01.06"),
+		t.BookingText, t.Purpose, t.CreditorID, t.MandateRef, t.CustomerRef,
+		t.CollectorRef, t.OrigAmount, t.ChargebackFee, t.Beneficiary, t.AccountNumber,
+		t.BIC, t.Amount, t.Currency, t.AdditionalDetails,
 	)
 	if err != nil {
 		return 0, err
@@ -136,14 +138,28 @@ func (d *Database) GetTransactions() ([]*transactions.Transaction, error) {
 	var ts []*transactions.Transaction
 	for rows.Next() {
 		t := transactions.Transaction{}
+		bookingDateStr := ""
+		valutaDateStr := ""
+
 		err := rows.Scan(
-			&t.ID, &t.Account, &t.BookingDate, &t.ValutaDate, &t.BookingText, &t.Purpose, &t.CreditorID,
+			&t.ID, &t.Account, &bookingDateStr, &valutaDateStr, &t.BookingText, &t.Purpose, &t.CreditorID,
 			&t.MandateRef, &t.CustomerRef, &t.CollectorRef, &t.OrigAmount, &t.ChargebackFee,
 			&t.Beneficiary, &t.AccountNumber, &t.BIC, &t.Amount, &t.Currency, &t.AdditionalDetails,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		t.BookingDate, err = time.Parse("02.01.06", bookingDateStr)
+		if err != nil {
+			return nil, err
+		}
+
+		t.ValutaDate, err = time.Parse("02.01.06", valutaDateStr)
+		if err != nil {
+			return nil, err
+		}
+
 		ts = append(ts, &t)
 	}
 
@@ -151,18 +167,18 @@ func (d *Database) GetTransactions() ([]*transactions.Transaction, error) {
 }
 
 // HasTransaction checks if a transaction already exists in the database
-func (d *Database) HasTransaction(transaction *transactions.Transaction) (bool, error) {
+func (d *Database) HasTransaction(t *transactions.Transaction) (bool, error) {
 	query := `SELECT COUNT(*) FROM transactions WHERE account = ? AND booking_date = ? AND valuta_date = ? AND amount = ? AND creditor_id = ? AND mandate_ref = ?`
 
 	var count int
 
 	if err := d.db.QueryRow(query,
-		transaction.Account,
-		transaction.BookingDate,
-		transaction.ValutaDate,
-		transaction.Amount,
-		transaction.CreditorID,
-		transaction.MandateRef,
+		t.Account,
+		t.BookingDate.Format("02.01.06"),
+		t.ValutaDate.Format("02.01.06"),
+		t.Amount,
+		t.CreditorID,
+		t.MandateRef,
 	).Scan(&count); err != nil {
 		return false, err
 	}

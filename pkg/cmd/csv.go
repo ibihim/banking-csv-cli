@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ibihim/banking-csv-cli/pkg/transactions"
 )
@@ -30,11 +32,21 @@ func ParseTransactions(reader io.Reader) ([]*transactions.Transaction, error) {
 			return nil, err
 		}
 
+		bookingDate, err := time.Parse("02.01.06", record[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse booking date (%s): %w", record[1], err)
+		}
+
+		valutaDate, err := time.Parse("02.01.06", record[2])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse valuta date (%s): %w", record[2], err)
+		}
+
 		// Parse the transaction
 		transaction := &transactions.Transaction{
 			Account:           record[0],
-			BookingDate:       record[1],
-			ValutaDate:        record[2],
+			BookingDate:       bookingDate,
+			ValutaDate:        valutaDate,
 			BookingText:       record[3],
 			Purpose:           record[4],
 			CreditorID:        record[5],
@@ -73,17 +85,4 @@ func parseFloat(s string) (float64, error) {
 		return 0, nil
 	}
 	return strconv.ParseFloat(strings.ReplaceAll(s, ",", "."), 64)
-}
-
-// GroupTransactions groups a slice of Transaction objects by beneficiary and calculates the total amount for each beneficiary
-func GroupTransactions(transactions []*transactions.Transaction) map[string]float64 {
-	groups := make(map[string]float64)
-	for _, t := range transactions {
-		if t.Amount < 0 {
-			groups[t.Beneficiary] -= t.Amount
-		} else {
-			groups[t.Beneficiary] += t.Amount
-		}
-	}
-	return groups
 }

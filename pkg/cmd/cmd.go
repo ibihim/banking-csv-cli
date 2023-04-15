@@ -42,11 +42,16 @@ func BankingCommand() *cobra.Command {
 		Use:   "app",
 		Short: "Group transactions by purpose",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			dbPath, err := cmd.Flags().GetString(dbFlag)
+			if err != nil {
+				return fmt.Errorf("failed to get dbFlag: %w", err)
+			}
+
 			// Init db
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 			db := sql.NewDatabase(&sql.DatabaseOptions{
-				URL: defaultDBPath,
+				URL: dbPath,
 			})
 			if err := db.Connect(ctx); err != nil {
 				return fmt.Errorf("failed on db connect: %w", err)
@@ -62,6 +67,7 @@ func BankingCommand() *cobra.Command {
 			return RunApp(ts)
 		},
 	}
+	appCmd.Flags().String(dbFlag, defaultDBPath, "Path to the database file")
 	rootCmd.AddCommand(appCmd)
 
 	// dbCmd represents the `db` subcommand
