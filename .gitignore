@@ -3,6 +3,7 @@ build/
 
 # Databases
 *.db
+data/
 
 # Database Tools
 .termdbms

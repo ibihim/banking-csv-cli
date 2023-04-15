@@ -1,16 +1,30 @@
 APP_NAME := banking
 APP_CMD_PATH := cmd/$(APP_NAME)
 BUILD_OUTPUT := build/$(APP_NAME)
+DB_FILE := transactions.db
+CSV_FILE := data/transactions.csv
+
+.PHONY: clean
+clean:
+	@echo "Cleaning up..."
+	@rm -rf $(BUILD_OUTPUT)
+	@rm -rf $(DB_FILE)
 
 .PHONY: build
 build:
 	@echo "Building the app..."
 	@go build -o $(BUILD_OUTPUT) $(APP_CMD_PATH)/main.go
 
+.PHONY: setup
+setup: clean build
+	@echo "Setting up the app..."
+	@./$(BUILD_OUTPUT) db migrate
+	@./$(BUILD_OUTPUT) db load --filename $(CSV_FILE)
+
 .PHONY: run
 run:
 	@echo "Running the app..."
-	@./$(BUILD_OUTPUT)
+	@./$(BUILD_OUTPUT) app
 
 .PHONY: lint
 lint:
