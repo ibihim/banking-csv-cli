@@ -8,7 +8,7 @@ import (
 	"github.com/ibihim/banking-csv-cli/pkg/transactions"
 )
 
-func RunGroup(transactions []*transactions.Transaction) error {
+func RunApp(transactions []*transactions.Transaction) error {
 	// Group the transactions by beneficiary and visualize them using Bubble Tea
 	groups := GroupTransactions(transactions)
 

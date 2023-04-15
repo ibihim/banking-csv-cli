@@ -38,8 +38,8 @@ func BankingCommand() *cobra.Command {
 	klog.InitFlags(fs)
 	rootCmd.PersistentFlags().AddGoFlagSet(fs)
 
-	groupCmd := &cobra.Command{
-		Use:   "group",
+	appCmd := &cobra.Command{
+		Use:   "app",
 		Short: "Group transactions by purpose",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Init db
@@ -59,10 +59,17 @@ func BankingCommand() *cobra.Command {
 				return fmt.Errorf("failed to load transactions: %w", err)
 			}
 
-			return RunGroup(ts)
+			return RunApp(ts)
 		},
 	}
-	rootCmd.AddCommand(groupCmd)
+	rootCmd.AddCommand(appCmd)
+
+	// dbCmd represents the `db` subcommand
+	dbCmd := &cobra.Command{
+		Use:   "db",
+		Short: "Database operations",
+	}
+	rootCmd.AddCommand(dbCmd)
 
 	loadCmd := &cobra.Command{
 		Use:   "load",
@@ -115,7 +122,7 @@ func BankingCommand() *cobra.Command {
 	}
 
 	loadCmd.Flags().String(filenameFlag, "", "The path to the csv file")
-	rootCmd.AddCommand(loadCmd)
+	dbCmd.AddCommand(loadCmd)
 
 	migrateCmd := &cobra.Command{
 		Use:   "migrate",
@@ -144,7 +151,7 @@ func BankingCommand() *cobra.Command {
 
 	migrateCmd.Flags().String(dbFlag, defaultDBPath, "Path to the database file")
 	migrateCmd.Flags().String(migrationsFlag, "pkg/sql/migrations", "Path to the database file")
-	rootCmd.AddCommand(migrateCmd)
+	dbCmd.AddCommand(migrateCmd)
 
 	return rootCmd
 }

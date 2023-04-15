@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,7 +51,7 @@ func validateMigrateOptions(migrationsPath string) error {
 	}
 
 	// Read the contents of the migrations directory.
-	files, err := ioutil.ReadDir(migrationsPath)
+	files, err := os.ReadDir(migrationsPath)
 	if err != nil {
 		return fmt.Errorf("error reading migrations directory: %v", err)
 	}
