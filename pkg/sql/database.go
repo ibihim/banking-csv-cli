@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4/database"
+	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/ibihim/banking-csv-cli/pkg/transactions"
@@ -32,7 +34,7 @@ type DatabaseOptions struct {
 
 // NewDatabase creates a new database.
 func NewDatabase(opts *DatabaseOptions) *Database {
-	// Set default options
+	// Init options
 	if opts == nil {
 		opts = &DatabaseOptions{}
 	}
@@ -90,6 +92,11 @@ func (d *Database) Connect(ctx context.Context) error {
 // Close closes the database connection.
 func (d *Database) Close() error {
 	return d.db.Close()
+}
+
+// Driver returns the database driver.
+func (d *Database) Driver() (database.Driver, error) {
+	return sqlite3.WithInstance(d.db, &sqlite3.Config{})
 }
 
 // AddTransaction adds a transaction to the database

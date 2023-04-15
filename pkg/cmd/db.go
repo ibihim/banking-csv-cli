@@ -1,16 +1,17 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlite3"
-	"github.com/jmoiron/sqlx"
+	"github.com/ibihim/banking-csv-cli/pkg/sql"
 )
 
 func completeMigrateOptions(dbPath string) error {
@@ -74,15 +75,19 @@ func validateMigrateOptions(migrationsPath string) error {
 }
 
 func RunMigrate(dbPath, migrationsPath string) error {
-	db, err := sqlx.Connect("sqlite3", dbPath)
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	db := sql.NewDatabase(&sql.DatabaseOptions{
+		URL: defaultDBPath,
+	})
+	if err := db.Connect(ctx); err != nil {
+		return fmt.Errorf("failed on db connect: %w", err)
 	}
 	defer db.Close()
 
-	driver, err := sqlite3.WithInstance(db.DB, &sqlite3.Config{})
+	driver, err := db.Driver()
 	if err != nil {
-		return fmt.Errorf("failed to create database driver: %w", err)
+		return fmt.Errorf("failed to get db driver: %w", err)
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
