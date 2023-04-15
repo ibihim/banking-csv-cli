@@ -2,86 +2,12 @@ package cmd
 
 import (
 	"encoding/csv"
-	"flag"
-	"fmt"
 	"io"
-	"log"
-	"os"
 	"strconv"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
-	"k8s.io/klog"
-
-	"github.com/ibihim/banking-csv-cli/pkg/model"
 	"github.com/ibihim/banking-csv-cli/pkg/transactions"
 )
-
-const (
-	filename = "filename"
-)
-
-func BankingCommand() *cobra.Command {
-	rootCmd := &cobra.Command{
-		Use:   "banking",
-		Short: "A tool to parse banking csv files",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			flag.CommandLine.VisitAll(func(flag *flag.Flag) {
-				klog.V(4).Infof("Flag: --%s=%q", flag.Name, flag.Value)
-			})
-		},
-	}
-
-	// Init klog files
-	fs := flag.NewFlagSet("", flag.PanicOnError)
-	klog.InitFlags(fs)
-	rootCmd.PersistentFlags().AddGoFlagSet(fs)
-
-	groupCmd := &cobra.Command{
-		Use:   "group",
-		Short: "Group transactions by purpose",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			filename, err := cmd.Flags().GetString(filename)
-			if err != nil {
-				return err
-			}
-
-			return RunGroup(filename)
-		},
-	}
-
-	groupCmd.Flags().String(filename, "Berlin", "City name")
-
-	rootCmd.AddCommand(groupCmd)
-
-	return rootCmd
-}
-
-func RunGroup(filename string) error {
-	reader, err := os.Open(filename)
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
-	}
-	defer reader.Close()
-
-	transactions, err := ParseTransactions(reader)
-	if err != nil {
-		return fmt.Errorf("failed to parse transactions: %w", err)
-	}
-
-	// Group the transactions by beneficiary and visualize them using Bubble Tea
-	groups := GroupTransactions(transactions)
-
-	// Create the table Model
-	tableModel := model.MapGroupsToModel(groups)
-
-	if _, err := tea.NewProgram(tableModel).Run(); err != nil {
-		log.Fatal(err)
-	}
-
-	return nil
-}
 
 // ParseTransactions parses a CSV file in CAMT format and returns a slice of Transaction objects
 func ParseTransactions(reader io.Reader) ([]*transactions.Transaction, error) {

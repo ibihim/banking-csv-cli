@@ -1,6 +1,8 @@
 package transactions
 
 type Transaction struct {
+	// ID is the id of the transaction.
+	ID int64
 	// Account is the account number of the account under view.
 	Account string
 	// BookingDate is the date of the transaction being triggered.

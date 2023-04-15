@@ -12,6 +12,12 @@ run:
 	@echo "Running the app..."
 	@./$(BUILD_OUTPUT)
 
+.PHONY: lint
+lint:
+	@echo "Running linter..."
+	@command -v golangci-lint > /dev/null || (echo "golangci-lint not found. Please install it: https://golangci-lint.run/usage/install/" && exit 1)
+	@golangci-lint run
+
 .PHONY: test
 test:
 	@echo "Running tests..."
