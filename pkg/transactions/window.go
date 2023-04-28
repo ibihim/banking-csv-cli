@@ -19,6 +19,30 @@ const (
 	columnWidth4 = 10
 )
 
+var (
+	noop = func() {}
+)
+
+type ClickRow struct {
+	row     table.Row
+	onClick func()
+}
+
+func NewRow(row table.Row, onClick func()) *ClickRow {
+	return &ClickRow{
+		row:     row,
+		onClick: onClick,
+	}
+}
+
+func (r *ClickRow) GetRow() table.Row {
+	return r.row
+}
+
+func (r *ClickRow) OnClick() {
+	r.onClick()
+}
+
 func CreateColumns() []table.Column {
 	return []table.Column{
 		{Title: "Date", Width: columnWidth1},
@@ -28,8 +52,11 @@ func CreateColumns() []table.Column {
 	}
 }
 
-func CreateRow(date, beneficiary, description, sum string) table.Row {
-	return table.Row{date, beneficiary, description, sum}
+func CreateRow(onClick func(), date, beneficiary, description, sum string) *ClickRow {
+	return &ClickRow{
+		row:     table.Row{date, beneficiary, description, sum},
+		onClick: onClick,
+	}
 }
 
 type Window struct {
@@ -86,8 +113,8 @@ func (w *Window) GetTab(title string) *Tab {
 	return w.tabs[title]
 }
 
-func (w *Window) GetRows() []table.Row {
-	rows := []table.Row{}
+func (w *Window) GetRows() []*ClickRow {
+	rows := []*ClickRow{}
 
 	for _, t := range w.orderedTabs {
 		rows = append(rows, t.GetRows()...)
@@ -128,9 +155,9 @@ func (t *Tab) GetCategory(title string) *Category {
 	return t.categories[title]
 }
 
-func (t *Tab) GetRows() []table.Row {
-	rows := []table.Row{
-		CreateRow(fmt.Sprintf("[ %s ]", t.title), "", "", ""),
+func (t *Tab) GetRows() []*ClickRow {
+	rows := []*ClickRow{
+		CreateRow(noop, fmt.Sprintf("[ %s ]", t.title), "", "", ""),
 	}
 
 	for _, c := range t.orderedCategories {
@@ -178,8 +205,9 @@ func (c *Category) GetSum() float64 {
 	return c.sum
 }
 
-func (c *Category) GetRows() []table.Row {
-	rows := []table.Row{CreateRow(
+func (c *Category) GetRows() []*ClickRow {
+	rows := []*ClickRow{CreateRow(
+		noop,
 		fmt.Sprintf("- %s", c.title),
 		"",
 		"",
@@ -226,8 +254,9 @@ func (s *Summary) OnClick() {
 	s.showDetails = !s.showDetails
 }
 
-func (s *Summary) GetRows() []table.Row {
-	rows := []table.Row{CreateRow(
+func (s *Summary) GetRows() []*ClickRow {
+	rows := []*ClickRow{CreateRow(
+		s.OnClick,
 		"",
 		s.title,
 		"",
@@ -242,6 +271,7 @@ func (s *Summary) GetRows() []table.Row {
 
 	for _, t := range s.transactions {
 		rows = append(rows, CreateRow(
+			noop,
 			"",
 			t.ValutaDate.Format("- 02.01"),
 			t.Purpose,

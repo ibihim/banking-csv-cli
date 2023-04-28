@@ -7,15 +7,30 @@ import (
 )
 
 type Model struct {
+	table table.Model
+
 	window *Window
 
-	table table.Model
+	rows    []table.Row
+	actions []func()
+}
+
+func (m Model) updateViewState() {
+	clickRows := m.window.GetRows()
+	m.rows = make([]table.Row, len(clickRows))
+	m.actions = make([]func(), len(clickRows))
+
+	for i, row := range clickRows {
+		m.rows[i] = row.GetRow()
+		m.actions[i] = row.OnClick
+	}
 }
 
 func NewModel(transactions []*Transaction) *Model {
 	m := Model{
 		window: NewWindow(transactions),
 	}
+	m.updateViewState()
 
 	s := table.DefaultStyles()
 	s.Header = s.Header.
@@ -30,7 +45,7 @@ func NewModel(transactions []*Transaction) *Model {
 
 	m.table = table.New(
 		table.WithColumns(CreateColumns()),
-		table.WithRows(m.window.GetRows()),
+		table.WithRows(m.rows),
 		table.WithFocused(true),
 		table.WithHeight(20),
 		table.WithStyles(s),
@@ -57,14 +72,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
-			cmds := []tea.Cmd{tea.Printf("TableRow (%d): ", m.table.Cursor())}
-
-			for i, r := range m.table.SelectedRow() {
-				cmds = append(cmds, tea.Printf("%d: %s ", i, r))
-			}
-			cmds = append(cmds, tea.Printf("\n"))
-
-			return m, tea.Sequence(cmds...)
+			currentRow := m.table.Cursor()
+			m.actions[currentRow]()
+			m.updateViewState()
+			m.table.SetRows(m.rows)
 		}
 	}
 
