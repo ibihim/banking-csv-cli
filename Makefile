@@ -11,15 +11,18 @@ clean:
 	@rm -rf $(DB_FILE)
 
 .PHONY: build
-build:
+build: clean
 	@echo "Building the app..."
 	@go build -o $(BUILD_OUTPUT) $(APP_CMD_PATH)/main.go
 
-.PHONY: setup
-setup: clean build
+.PHONY: migrate
+migrate:
 	@echo "Setting up the app..."
 	@./$(BUILD_OUTPUT) db migrate
 	@./$(BUILD_OUTPUT) db load --filename $(CSV_FILE)
+
+.PHONY: setup
+setup: build migrate
 
 .PHONY: run
 run:
