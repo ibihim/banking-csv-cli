@@ -1,92 +1,122 @@
 package transactions
 
 import (
-	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"strconv"
 )
 
-type Model struct {
-	table table.Model
+func noop(*Sum, string) error { return nil }
 
-	window *Window
+func NewSummary(ts []*Transaction) *Sum {
+	sum := &Sum{
+		title: "Transactions",
 
-	rows    []table.Row
-	actions []func()
-}
+		visible: true,
+		action:  noop,
 
-func (m Model) updateViewState() {
-	clickRows := m.window.GetRows()
-	m.rows = make([]table.Row, len(clickRows))
-	m.actions = make([]func(), len(clickRows))
-
-	for i, row := range clickRows {
-		m.rows[i] = row.GetRow()
-		m.actions[i] = row.OnClick
+		orderedSums: []*Sum{},
+		mappedSums:  map[string]*Sum{},
 	}
-}
 
-func NewModel(transactions []*Transaction) *Model {
-	m := Model{
-		window: NewWindow(transactions),
-	}
-	m.updateViewState()
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-
-	m.table = table.New(
-		table.WithColumns(CreateColumns()),
-		table.WithRows(m.rows),
-		table.WithFocused(true),
-		table.WithHeight(20),
-		table.WithStyles(s),
-	)
-
-	return &m
-}
-
-func (m Model) Init() tea.Cmd { return nil }
-
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "esc":
-			if m.table.Focused() {
-				m.table.Blur()
-			} else {
-				m.table.Focus()
-			}
-
-		case "q", "ctrl+c":
-			return m, tea.Quit
-
-		case "enter":
-			currentRow := m.table.Cursor()
-			m.actions[currentRow]()
-			m.updateViewState()
-			m.table.SetRows(m.rows)
+	for _, t := range ts {
+		yearStr := strconv.Itoa(t.ValutaDate.Year())
+		if !sum.Has(yearStr) {
+			sum.AddSum(NewSum(yearStr))
 		}
+		year := sum.Sum(yearStr)
+
+		monthStr := t.ValutaDate.Month().String()
+		if !year.Has(monthStr) {
+			year.AddSum(NewSum(monthStr))
+		}
+		month := year.Sum(monthStr)
+
+		if !month.Has(t.Beneficiary) {
+			month.AddSum(NewSum(t.Beneficiary))
+		}
+		beneficiary := month.Sum(t.Beneficiary)
+		beneficiary.AddSum(&Sum{
+			title: t.Purpose,
+			sum:   t.Amount,
+
+			visible: false,
+			action: func(self *Sum, action string) error {
+				// Toggle the visibility of the children.
+				for _, sum := range self.orderedSums {
+					sum.visible = !sum.visible
+				}
+
+				return nil
+			},
+
+			orderedSums: []*Sum{},
+			mappedSums:  map[string]*Sum{},
+		})
 	}
 
-	m.table, cmd = m.table.Update(msg)
-	return m, cmd
+	return sum
 }
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
+func NewSum(title string) *Sum {
+	return &Sum{
+		title:       title,
+		orderedSums: []*Sum{},
+		mappedSums:  map[string]*Sum{},
+		visible:     true,
+		action:      noop,
+	}
+}
 
-func (m Model) View() string {
-	return baseStyle.Render(m.table.View()) + "\n"
+type Sum struct {
+	title string
+	sum   float64
+
+	visible bool
+	action  func(*Sum, string) error
+
+	orderedSums []*Sum // Queue
+	mappedSums  map[string]*Sum
+}
+
+func (s *Sum) Action(action string) error {
+	return s.action(s, action)
+}
+
+func (s *Sum) Title() string {
+	return s.title
+}
+
+func (s *Sum) Visible() bool {
+	return s.visible
+}
+
+func (s *Sum) AddSum(sum *Sum) {
+	s.orderedSums = append(s.orderedSums, sum)
+	s.mappedSums[sum.title] = sum
+}
+
+func (s *Sum) Sum(title string) *Sum {
+	return s.mappedSums[title]
+}
+
+func (s *Sum) Sums() []*Sum {
+	return s.orderedSums
+}
+
+func (s *Sum) Has(title string) bool {
+	_, ok := s.mappedSums[title]
+	return ok
+}
+
+func (s *Sum) Total() float64 {
+	// if this is a leaf, return the sum.
+	if len(s.orderedSums) == 0 {
+		return s.sum
+	}
+
+	// if this is a branch, return the sum of all children.
+	var total float64
+	for _, sum := range s.orderedSums {
+		total += sum.Total()
+	}
+	return total
 }
