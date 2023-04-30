@@ -56,6 +56,8 @@ func NewTable(summary *transactions.Sum) *Table {
 }
 
 func (t *Table) action(row int, action string) error {
+	//	fmt.Printf("action: %s, row: %d, title: %s", action, row, t.ref[row].Title())
+
 	if err := t.ref[row].Action(action); err != nil {
 		return err
 	}
@@ -74,7 +76,14 @@ func newRow(date, beneficiary, description string, sum float64) table.Row {
 	})
 }
 
+func (t *Table) reset() {
+	t.rows = []table.Row{}
+	t.ref = []*transactions.Sum{}
+}
+
 func (t *Table) buildTable() *Table {
+	t.reset()
+
 	for _, year := range t.model.Sums() {
 		if !year.Visible() {
 			continue

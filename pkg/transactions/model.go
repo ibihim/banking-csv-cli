@@ -8,10 +8,8 @@ func noop(*Sum, string) error { return nil }
 
 func NewSummary(ts []*Transaction) *Sum {
 	sum := &Sum{
-		title: "Transactions",
-
+		title:   "Transactions",
 		visible: true,
-		action:  noop,
 
 		orderedSums: []*Sum{},
 		mappedSums:  map[string]*Sum{},
@@ -39,14 +37,6 @@ func NewSummary(ts []*Transaction) *Sum {
 			sum:   t.Amount,
 
 			visible: false,
-			action: func(self *Sum, action string) error {
-				// Toggle the visibility of the children.
-				for _, sum := range self.orderedSums {
-					sum.visible = !sum.visible
-				}
-
-				return nil
-			},
 
 			orderedSums: []*Sum{},
 			mappedSums:  map[string]*Sum{},
@@ -62,7 +52,6 @@ func NewSum(title string) *Sum {
 		orderedSums: []*Sum{},
 		mappedSums:  map[string]*Sum{},
 		visible:     true,
-		action:      noop,
 	}
 }
 
@@ -71,17 +60,28 @@ type Sum struct {
 	sum   float64
 
 	visible bool
-	action  func(*Sum, string) error
 
 	orderedSums []*Sum // Queue
 	mappedSums  map[string]*Sum
 }
 
 func (s *Sum) Action(action string) error {
-	return s.action(s, action)
+	// Toggle the visibility of the children.
+	for i := range s.orderedSums {
+		s.orderedSums[i].visible = !s.orderedSums[i].visible
+
+		// Toggle the visibility of the children.
+		s.orderedSums[i].Action(action)
+	}
+
+	return nil
 }
 
 func (s *Sum) Title() string {
+	if s.title == "" {
+		return "< no title >"
+	}
+
 	return s.title
 }
 

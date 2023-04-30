@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ibihim/banking-csv-cli/pkg/transactions"
+	"k8s.io/klog"
 )
 
 // ParseTransactions parses a CSV file in CAMT format and returns a slice of Transaction objects
@@ -34,12 +35,13 @@ func ParseTransactions(reader io.Reader) ([]*transactions.Transaction, error) {
 
 		bookingDate, err := time.Parse("02.01.06", record[1])
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse booking date (%s): %w", record[1], err)
+			return nil, fmt.Errorf("failed to parse booking date (%q, in record %q): %w", record[1], record, err)
 		}
 
 		valutaDate, err := time.Parse("02.01.06", record[2])
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse valuta date (%s): %w", record[2], err)
+			valutaDate = bookingDate
+			klog.Warningf("failed to parse valuta date (%q, in record %q): %w", record[2], record, err)
 		}
 
 		// Parse the transaction
