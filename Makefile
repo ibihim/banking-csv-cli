@@ -17,7 +17,7 @@ build: clean
 
 .PHONY: migrate
 migrate:
-	@echo "Setting up the app..."
+	@echo "Migrating the database..."
 	@./$(BUILD_OUTPUT) db migrate
 	@./$(BUILD_OUTPUT) db load --filename $(CSV_FILE)
 
@@ -26,8 +26,8 @@ setup: build migrate
 
 .PHONY: run
 run:
-	@echo "Running the app..."
-	@./$(BUILD_OUTPUT) app
+	@printf "Running the app with %s..." $(DB_FILE)
+	@./$(BUILD_OUTPUT) app --db $(DB_FILE)
 
 .PHONY: lint
 lint:
