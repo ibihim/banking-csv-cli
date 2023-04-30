@@ -7,3 +7,9 @@ data/
 
 # Database Tools
 .termdbms
+
+# Editor
+.vscode
+
+# Debug
+cmd/banking/__debug_bin
