@@ -11,8 +11,6 @@ var baseStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("240"))
 
 const (
-	columnCount = 4
-
 	columnWidth1 = 10
 	columnWidth2 = 50
 	columnWidth3 = 50
@@ -45,7 +43,11 @@ func (t *Table) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			currentRow := t.table.Cursor()
-			t.action(currentRow, "enter")
+			if err := t.action(currentRow, "enter"); err != nil {
+				// TODO@ibihim: fix
+				panic(err)
+			}
+
 			t.table.SetRows(t.rows)
 		}
 	}
@@ -55,7 +57,7 @@ func (t *Table) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (t *Table) View() string {
-	return t.table.View()
+	return baseStyle.Render(t.table.View()) + "\n"
 }
 
 func (t *Table) Init() tea.Cmd {
