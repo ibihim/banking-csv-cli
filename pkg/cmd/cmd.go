@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -114,7 +115,11 @@ func BankingCommand() *cobra.Command {
 					return fmt.Errorf("failed to check if transaction exists: %w", err)
 				}
 				if ok {
-					return fmt.Errorf("transaction already exists: %+v", t)
+					b, err := json.Marshal(t)
+					if err != nil {
+						return fmt.Errorf("failed to marshal transaction: %w", err)
+					}
+					klog.Warningf("duplicate transaction: %s", string(b))
 				}
 
 				_, err = db.AddTransaction(t)
